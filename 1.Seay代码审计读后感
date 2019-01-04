@@ -1,0 +1,74 @@
+第一 二章介绍了代码审计的环境搭建，结合多个方面的意见和建议，如下是我的环境配置：看代码和静态分析是VScode，动态调试Xdebug插件，多php环境是mamp pro 
+除了环境配置还简单了解了php的核心配置：
+registe_globals全局变量开关 5.4后被移除 
+allow_url_include 是否允许包含远程文件 默认为off
+magic_quotes_gpc 魔术引号自动过滤 5.4之后被移除 单引号 双引号 反斜杠 空字符前面加上反斜杠 但是不会过滤server变量
+magic_quotes_runtime 差不多同上 但是对象是从数据库中提取的数据 5.4后被移除
+magic_quotes_sybase 覆盖掉magic_quotes_gpc 仅仅转换空字符和讲单引号变成双引号 5.4后被移除
+safe_mode 安全模式 文件操作（unlink file include） 命令执行函数（popen system exec提示错误）
+open_basedir PHP可访问目录
+disable_functions 禁用函数 dl()函数 加载自定义的php扩展来突破禁用函数
+display_errors error_reporting 错误显示
+
+第三章 通用代码审计思路
+根据敏感关键字回溯参数传递过程 就是查找敏感关键字啦
+通读全文代码 查看程序目录结构 
+1.函数集文件 functions commons 包含一些公共的函数，提供给其他文件统一调用 一个给长好用过的技巧就是去打开index.php或者一些功能性的文件，在头部一般能找到
+2.配置文件 config
+3.安全过滤文件 filter safe check等关键字 这类文件主要是对参数进行过滤
+4.index文件 是一个程序的入口文件 可以通过它了解整个程序的架构 运行的流程 包含到的文件以及核心文件又有哪些
+PS:	这里有很重要的一点学习代码审计的前期不建议去读开源框架或者使用开源框架的应用 先去 XXX之类的读一些小应用来读 等对php比较熟悉的时候 再去读一些 thinkphp yii zend等框架 才能快速挖掘高质量的漏洞
+根据功能点定向审计：文件上传 文件管理 登陆认证 找回密码等
+tips：宽字节注入及addslashes() 获取ip没有格式验证 容易产生注入  重装漏洞 die() exit() 
+
+具体到每一种漏洞的挖掘
+SQL注入
+经常出现在登陆页面 获取http头 订单处理等 client-ip xff等
+1.宽字节注入
+php连接mysql set chatacter_set_client=gbk 告诉mysql客户端原来数据编码是gbk然后mysql服务器对查询语句进行gbk转码 反斜杠被%df吃掉 通常的设置方法是SET NMMES 'gbk'  mysql_query("SET NAMES 'gbk',$conn")
+挖掘方法 搜索关键字：SET NAMES character_set_client=gbk mysql_set_charset('gbk')
+2二次urldecode注入
+通常web应用程序都使用 addslashes() mysql_real_escape_string() mysql_escape_string() 或开启gpc方式防止注入 but...某处使用了urldecode() 或者rawurldecodes() 会导致注入 因为web server自动url解码一次 再使用函数解码一次 当提交 id=1%2527时 会导致注入
+xss
+查询关键字 print print_r echo printf sprintf die var_dump var_export 这里注意一下各种编码问题
+CSRF
+这个不用直接看代码 直接搭建好环境看有没有token就好啦
+文件包含漏洞
+大多出现在模块家在 模版加载 以及cache调用的地方 注意一下远程文件包含需要设置 allow_url_include=on
+搜索关键字 include() include_once() require() require_once() 
+关于文件包含的截断 
+1.%00截断
+<?php include $_GET['a'].'php'?>  ?file=2.txt%00
+但它受限于gpc和addlashes等函数 php5.3以后全面修复%00截断的问题
+2.多个英文句号和反斜杠 php5.3以后被修复 windows 240个连续的点 linux2038个/.组合
+3.问号
+文件读取(下载)漏洞
+可以直接看功能点 或者搜索文件读取的函数file_get_contents() highlight_file() fopen() readfile() fread() fgets() parse_ini_file() show_source() file()
+文件上传漏洞
+一般应用可以上传文件的点比较少 而且目前达索web应用机遇框架来写 上传点都是调用同一个上传类 上传函只有move_upload_file()
+其实这里就涉及到上传绕过的问题 结合php特性 也可以结合解析漏洞等 文件上传绕过有专门的解析
+tips：in_array($filenamext,$disalloed_types) 如果$filenamext为 "php " 则返回false
+文件删除漏洞 unlink() session_destory()
+代码执行漏洞
+eval() assert() preg_replace() call_user_func() call_user_func_array() array_map()等 php动态函数($a($b))
+call_user_func_array() array_map()等数十个函数有吊影其他函数的功能
+关于动态函数 php的函数可以直接有字符串拼接 还有 echo "$a" 变量会解析
+命令执行
+system() exec() shell() passthru() pcntl_exec() popen() proc_open() 以及反引号的命令执行 echo `whoami`
+变量覆盖漏洞
+1.函数使用不当 extract() parse_str()  import_request_variables() $$
+等于与存在判断绕过
+in_arry() 比较之前会自动类型转换
+is_numeric() 参数为hex时直接返回true
+== 会先进行类型转换
+二次漏洞挖掘 感觉就是出现的不是一个地方吧
+
+
+
+
+
+
+
+
+
+
