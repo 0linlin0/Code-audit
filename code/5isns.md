@@ -39,7 +39,8 @@ if (!move_uploaded_file($data['file']['tmp_name'], $tmpurl)) {
 }
 ```
 
-# Rows:65   
+# Rows:65 
+![](https://raw.githubusercontent.com/0linlin0/Code-audit/master/images/51sns1.png)
 # analysis
 The entire source code takes the mvc architecture. In the audit doc function module, locate the $action == 'upload' operation and find the file operation related function move_uploaded_file($data['file']['tmp_name'] at line 64.
 Line 53 token value can be constructed because the value of $time token is user controllable, $tmpname is user controllable, and is directly spliced into $tmpurl.
@@ -75,6 +76,7 @@ Content-Disposition: form-data; name="time"
 15799999999
 -----------------------------115581352129376--
 ```
+![](https://raw.githubusercontent.com/0linlin0/Code-audit/master/images/51sns2.png)
 
 # Harm
 Get the permissions of the web server
